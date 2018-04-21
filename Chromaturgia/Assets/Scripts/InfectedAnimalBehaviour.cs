@@ -33,6 +33,8 @@ public class InfectedAnimalBehaviour : MonoBehaviour {
 			win = true;
 			curedAnimals++;
 			UpdateText ();
+
+            GameManager.instance.SetPuzzleAsCompleted();
 		}
 	}
 

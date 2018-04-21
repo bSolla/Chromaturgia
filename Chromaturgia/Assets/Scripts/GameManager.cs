@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-
+using UnityEngine.PostProcessing;
 
 
 public class GameManager : MonoBehaviour {
+
+    public const int MAX_LEVELS = 5;
 
 	public static GameManager instance = null;
 
@@ -28,6 +30,17 @@ public class GameManager : MonoBehaviour {
 
 	Text redLevels, greenLevels, blueLevels;
 
+    [HideInInspector]
+    public bool[] completedLevels = new bool[MAX_LEVELS];
+
+    [HideInInspector]
+    public float brightness;
+    [HideInInspector]
+    public float saturation;
+
+    PostProcessingBehaviour cam;
+    ColorGradingModel.Settings auxSettings;
+
     void Awake()
     {
 		if (instance == null) 
@@ -36,7 +49,17 @@ public class GameManager : MonoBehaviour {
 
 			DontDestroyOnLoad (this.gameObject);
 
-		} else 
+            // initializing goes in Awake since it doesn't depend on other gO
+            colors.x = 0.9f;
+            colors.y = 0.9f;
+            colors.z = 0.9f;
+            colors.w = 1;
+            
+            for (int i = 0; i < MAX_LEVELS; ++i)
+            {
+                completedLevels[i] = false;
+            }
+        } else 
 		{
 			Destroy (this.gameObject);
 		}
@@ -44,16 +67,39 @@ public class GameManager : MonoBehaviour {
 
     public void Start()
     {
-		// caching 
-		redLevels = GameObject.FindGameObjectWithTag("RedLevels").GetComponent<Text>();
-		greenLevels = GameObject.FindGameObjectWithTag("GreenLevels").GetComponent<Text>();
-		blueLevels = GameObject.FindGameObjectWithTag("BlueLevels").GetComponent<Text>();
+        // removed caching to avoid wrong rgb levels
+        //Caching(); 
+    }
 
-		// initializing 
-		colors.x = 0.9f;
-		colors.y = 0.9f;
-		colors.z = 0.9f;
-		colors.w = 1;
+    public void Caching()
+    {
+        redLevels = GameObject.FindGameObjectWithTag("RedLevels").GetComponent<Text>();
+        greenLevels = GameObject.FindGameObjectWithTag("GreenLevels").GetComponent<Text>();
+        blueLevels = GameObject.FindGameObjectWithTag("BlueLevels").GetComponent<Text>();
+    }
+
+    public void ChangeBrightness()
+    {
+        cam = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<PostProcessingBehaviour>();
+
+        // may seem redundant but it's the only way it compiles:
+        // copy current settings into the temporary variable
+        auxSettings = cam.profile.colorGrading.settings;
+
+        // make changes in auxSettings
+        auxSettings.basic.postExposure = brightness;
+
+        // move those settings to the actual profile
+        cam.profile.colorGrading.settings = auxSettings;
+    }
+
+    public void ChangeSaturation()
+    {
+        cam = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<PostProcessingBehaviour>();
+
+        auxSettings = cam.profile.colorGrading.settings;
+        auxSettings.basic.saturation = saturation + 1;
+        cam.profile.colorGrading.settings = auxSettings;
     }
 
     public void DecreaseColor(Option color)
@@ -100,17 +146,27 @@ public class GameManager : MonoBehaviour {
         }
     }
 
+    public void SetPuzzleAsCompleted()
+    {
+        int index = (int)GameObject.FindGameObjectWithTag("Puzle").GetComponent<Text>().text.ToCharArray()[0] - 48;
+
+        completedLevels[index] = true;
+
+        SaveLoad.instance.Save();
+        Debug.Log("Saved");
+    }
+
     void Update()
     {
-        redLevels.text = Mathf.Round(colors.x / bulletAmount).ToString();
-        greenLevels.text = Mathf.Round(colors.y / bulletAmount).ToString();
-        blueLevels.text = Mathf.Round(colors.z / bulletAmount).ToString();
+        GameObject.FindGameObjectWithTag("RedLevels").GetComponent<Text>().text = Mathf.Round(colors.x / bulletAmount).ToString();
+        GameObject.FindGameObjectWithTag("GreenLevels").GetComponent<Text>().text = Mathf.Round(colors.y / bulletAmount).ToString();
+        GameObject.FindGameObjectWithTag("BlueLevels").GetComponent<Text>().text = Mathf.Round(colors.z / bulletAmount).ToString();
         CheckHealth();
     }
 
     void CheckHealth()
     {
-		if (colors.x == 0 && colors.y == 0 && colors.z == 0) //(FirstSmallerThanSecond(colors, deathThreshold))
+		if (colors.x == 0 && colors.y == 0 && colors.z == 0) 
         {
             Death();
         }

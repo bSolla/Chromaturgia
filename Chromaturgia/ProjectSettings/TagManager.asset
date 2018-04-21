@@ -27,6 +27,12 @@ TagManager:
   - LevelInfo
   - ThinkMenu
   - MainMenu
+  - ExitMenu
+  - TitleMenu
+  - OptionsMenu
+  - StartMenu
+  - Puzle
+  - MenuScriptHolder
   layers:
   - Default
   - TransparentFX
